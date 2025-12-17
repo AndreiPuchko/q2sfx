@@ -1,0 +1,54 @@
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pkl
+*.egg-info/
+dist/
+build/
+*.egg
+*.venv/
+.venv/
+.env
+
+# ========================
+# PyInstaller
+# ========================
+*.spec
+*.manifest
+*.log
+*.tmp
+*.bak
+*.exe
+*.zip
+
+# ========================
+# Go
+# ========================
+*.exe
+*.exe~
+*.out
+*.test
+/vendor/
+go.mod
+go.sum
+
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# Temp / IDE
+# ========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+*.lock
