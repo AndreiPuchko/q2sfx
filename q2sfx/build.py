@@ -1,40 +1,35 @@
 # q2sfx/builder.py
 import subprocess
 import shutil
-from pathlib import Path
 import zipfile
 import tempfile
 import sys
+from pathlib import Path
 
 
 class Q2SFXBuilder:
     """
-    Builder class for creating a self-extracting (SFX) executable
-    from a Python application using PyInstaller and embedded Go code.
+    Builder for creating a self-extracting executable (SFX) from a Python app using PyInstaller and Go.
     """
 
     def __init__(
-        self, python_app: Path, console: bool = False, output_dir: Path = None
+        self, python_app: str, console: bool = False, output_dir: str = "dist.sfx"
     ):
         """
-        Initialize the builder.
-
         Args:
-            python_app (Path): Path to the Python script to package.
-            console (bool): Whether to run the final executable with console.
-            output_dir (Path, optional): Folder where final SFX will be placed.
-                                         Defaults to './dist.sfx'.
+            python_app (str): Path to the Python entry script.
+            console (bool): Run payload with console (True) or GUI (False). Defaults to False.
+            output_dir (str): Directory where final SFX will be placed. Defaults to 'dist.sfx'.
         """
-        self.python_app = python_app.resolve()
+        self.python_app = Path(python_app).resolve()
         self.console = console
+        self.output_dir = Path(output_dir)
         self.dist_dir = Path("dist")
         self.build_dir = Path("build")
-        self.assets_dir = Path(__file__).parent / "assets"  # Go source files here
+        self.assets_dir = Path(__file__).parent / "assets"
         self.temp_dir = Path(tempfile.mkdtemp())
         self.payload_zip = self.temp_dir / f"{self.python_app.stem}.zip"
         self.go_sfx_dir = None
-        self.output_dir = Path(output_dir) if output_dir else Path("dist.sfx")
-        self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def check_go(self):
         """Check if Go is installed."""
@@ -49,11 +44,12 @@ class Q2SFXBuilder:
             raise RuntimeError("Go is not installed or not in PATH")
 
     def run_pyinstaller(self):
-        """Run PyInstaller to build the Python app (optional)."""
+        """Run PyInstaller to build the Python app."""
         if not self.python_app.exists():
             raise FileNotFoundError(f"{self.python_app} does not exist")
         self.dist_dir.mkdir(parents=True, exist_ok=True)
         self.build_dir.mkdir(parents=True, exist_ok=True)
+
         cmd = [
             sys.executable,
             "-m",
@@ -67,18 +63,19 @@ class Q2SFXBuilder:
         ]
         if not self.console:
             cmd.append("--windowed")
+
         print("Running PyInstaller:", " ".join(cmd))
         subprocess.run(cmd, check=True)
 
     def pack_payload(self):
-        """Create a ZIP archive of the PyInstaller build folder for embedding."""
+        """Zip the PyInstaller build folder for embedding into SFX."""
         build_folder = self.dist_dir / self.python_app.stem
         if not build_folder.exists():
             raise FileNotFoundError(
                 f"PyInstaller output folder {build_folder} does not exist"
             )
 
-        app_base = self.python_app.stem  # root folder inside ZIP
+        app_base = self.python_app.stem  # root folder inside zip
 
         with zipfile.ZipFile(
             self.payload_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
@@ -94,40 +91,42 @@ class Q2SFXBuilder:
         """Copy Go files and payload to temp folder for building SFX."""
         temp_go_dir = self.temp_dir / "go_sfx"
         shutil.copytree(self.assets_dir, temp_go_dir, dirs_exist_ok=True)
+
         payload_dest = temp_go_dir / "payload"
         payload_dest.mkdir(parents=True, exist_ok=True)
         shutil.copy(self.payload_zip, payload_dest / self.payload_zip.name)
+
         self.go_sfx_dir = temp_go_dir
         print(f"Go files prepared in {self.go_sfx_dir}")
 
-    def build_sfx(self, output_name: str = None):
+    def build_sfx(self, output_name: str = None) -> str:
         """
         Build the final self-extracting executable using Go.
 
         Args:
-            output_name (str, optional): Name of the final SFX file.
-                                        Defaults to Python app stem + .exe on Windows.
+            output_name (str, optional): Name of the final SFX file. Defaults to Python app stem + .exe on Windows.
+
+        Returns:
+            str: Path to the built SFX.
         """
         if not output_name:
             output_name = self.python_app.stem
             if sys.platform.startswith("win"):
                 output_name += ".exe"
 
-        # полный путь к финальному файлу в рабочей папке
-        final_output = (Path.cwd() / self.output_dir / output_name).resolve()
+        final_output = self.output_dir / output_name
         final_output.parent.mkdir(parents=True, exist_ok=True)
 
         ldflags = "-s -w"
         if self.console:
             ldflags += " -X main.defaultConsole=true"
 
-        # Go build будет работать в temp/go_sfx, но выводим результат сразу в final_output
         cmd = ["go", "build", "-ldflags", ldflags, "-o", str(final_output)]
         print("Building SFX:", " ".join(cmd))
         subprocess.run(cmd, check=True, cwd=self.go_sfx_dir)
-        print(f"SFX built: {final_output}")
 
-        return final_output
+        print(f"SFX built: {final_output}")
+        return str(final_output)
 
     def cleanup(self):
         """Remove temporary files created during the build process."""
