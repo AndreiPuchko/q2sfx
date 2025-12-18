@@ -93,6 +93,8 @@ class Q2SFXBuilder:
             str(self.dist_dir),
             "--workpath",
             str(self.build_dir),
+            "--specpath",
+            str(self.build_dir),
             str(self.python_app),
         ]
         if not self.console:
