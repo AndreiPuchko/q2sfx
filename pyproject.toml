@@ -18,6 +18,11 @@ build_sfx = "q2sfx.build:main"
 pytest = "^7.2"
 pytest-cov = "^4.0"
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: slow integration tests that build real SFX binaries"
+]
+
 [build-system]
 requires = ["poetry-core>=1.6.0"]
 build-backend = "poetry.core.masonry.api"
