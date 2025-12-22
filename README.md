@@ -6,15 +6,23 @@ It embeds your Python application (as a ZIP archive) into a Go-based SFX install
 
 ---
 
-## Features
+## ✨ Key Features
 
 - Build Python apps using PyInstaller (optional, can start from existing build).
-- Pack PyInstaller output into a ZIP payload.
+- Pack PyInstaller output into a ZIP payload (optional, can start from existing ZIP).
 - Embed payload into a Go-based self-extracting executable (SFX).
-- Supports console or GUI mode.
-- Optionally creates a desktop shortcut.
-- Fully configurable output directories.
-- Works on Windows, Linux, and macOS.
+
+## The generated SFX executable provides:
+
+- **Installer**: on the first run extracts all payload data (PyA) into the given folder(optional), creates the shortcut (optional).
+- **Updater**: When updating, the tool only overwrites core components (`.exe`, `_internal/`, and `assets/`). Custom user folders, logs, or local databases remain untouched.
+- **CLI Flexibility**: SFX Supports flags to force console mode, change the installation path or shortcut name.
+- Progress bar with animated spinner.
+- Cross-platform: Windows, Linux, macOS.
+
+- **Progress indication during extraction**, including an animated spinner.
+- **Safe overwrite behavior** — only predefined folders and files are modified
+  (`_internal`, `assets`, and the executable itself), preventing accidental data loss.
 
 ---
 
@@ -92,20 +100,23 @@ builder.build_sfx("dist.sfx/my_app_setup.exe")
 
 ---
 
+## SFX usage
+
 ### CLI Help
 
+```
 q2_sfx.exe --help
 
 Usage: q2_sfx.exe [options] [path]
 
-Options:  
- -no-shortcut  
- Do not create a desktop shortcut.  
- -shortcut-name string  
- Name of the shortcut (default: application name).
-
-[path] (optional)  
- Installation directory (default: application name).
+Options:
+  -no-shortcut
+  Do not create a desktop shortcut.
+  -shortcut-name string
+  Name of the shortcut (default: application name).
+  [path] (optional)
+  Installation directory (default: application name).
+```
 
 ---
 
@@ -117,7 +128,7 @@ Options:
 
 # Run PyInstaller
 
-pyinstaller --console path\to\your_app.py
+pyinstaller path\to\your_app.py
 
 # Compress the dist folder
 
@@ -125,15 +136,13 @@ Compress-Archive -Path dist\your_app -DestinationPath dist\your_app.zip
 
 # Prepare Go files and build SFX
 
-python -m q2sfx.builder path\to\your_app.py --console
+python -m q2sfx path\to\your_app.py
 
 ---
 
 ## Notes
-
 - The Python application name must match the ZIP archive name.
 - By default, SFX will be generated in the `dist.sfx/` folder.
-- Desktop shortcut creation is optional.
 
 ---
 
