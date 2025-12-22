@@ -15,8 +15,8 @@ class Q2SFXBuilder:
 
     def __init__(
         self,
-        python_app: str = None,
-        console: bool = False,
+        python_app: str = "",
+        console: bool = True,
         output_dir: str = "dist.sfx",
     ):
         self.python_app = Path(python_app).resolve() if python_app else None
@@ -218,12 +218,12 @@ class Q2SFXBuilder:
 
     @staticmethod
     def build_sfx_from(
-        python_app: str = None,
-        dist_path: str = None,
-        payload_zip: str = None,
+        python_app: str = "",
+        dist_path: str = "",
+        payload_zip: str = "",
         output_dir: str = "dist.sfx",
-        console: bool = False,
-        output_name: str = None,
+        console: bool = True,
+        output_name: str = "",
     ) -> str:
         """
         Convenience factory: build SFX in one line from any stage.
