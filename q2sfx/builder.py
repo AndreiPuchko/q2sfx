@@ -17,15 +17,22 @@ class Q2SFXBuilder:
         self,
         python_app: str = "",
         console: bool = True,
+        build_dir: str = "build",
+        dist_dir: str = "dist",
+        dist_zip_dir: str = "dist.zip",
         output_dir: str = "dist.sfx",
     ):
-        self.python_app = Path(python_app).resolve() if python_app else None
+        self.app_name = ""
+        self.python_app = Path(python_app).resolve() if python_app else ""
+        if self.python_app != "":
+            self.app_name = self.python_app.stem
         self.console = console
 
         # Directories (can be overridden)
+        self.build_dir = Path(build_dir)
+        self.dist_dir = Path(dist_dir)
+        self.dist_zip_dir = Path(dist_zip_dir)
         self.output_dir = Path(output_dir)
-        self.dist_dir = Path("dist")
-        self.build_dir = Path("build")
         self.assets_dir = Path(__file__).parent / "assets"
         self.dist_is_ready = False
 
@@ -38,10 +45,11 @@ class Q2SFXBuilder:
 
     def set_dist(self, dist_path: str):
         """Use an existing PyInstaller dist folder instead of building it."""
-        self.dist_dir = Path(dist_path).resolve()
+        self.dist_dir = Path(dist_path).resolve().parent
         if not self.python_app:
             # Try to infer python_app stem from dist folder name
             self.python_app = Path(dist_path).name
+        self.app_name = Path(dist_path).name
         self.dist_is_ready = True
         return self
 
@@ -112,7 +120,7 @@ class Q2SFXBuilder:
             return self
 
         if self.dist_is_ready:
-            dist_folder = self.dist_dir
+            dist_folder = self.dist_dir / self.app_name
         else:
             if self.python_app is None:
                 raise RuntimeError("python_app not set")
@@ -121,7 +129,7 @@ class Q2SFXBuilder:
                 if isinstance(self.python_app, Path)
                 else self.dist_dir / self.python_app
             )
-        
+
         if not dist_folder.exists() or self.dist_is_ready is False:
             print(
                 f"Dist folder {dist_folder} not found. Running PyInstaller automatically..."
@@ -132,16 +140,17 @@ class Q2SFXBuilder:
         if not self.dist_dir or not self.python_app:
             raise RuntimeError("dist_dir or python_app not set")
 
-        self.payload_zip = self.temp_dir / f"{dist_folder.name}.zip"
-        app_base = dist_folder.name
+        self.dist_zip_dir.mkdir(parents=True, exist_ok=True)
+        self.payload_zip = self.dist_zip_dir / f"{self.app_name}.zip"
 
         with zipfile.ZipFile(
             self.payload_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
         ) as zf:
             for f in dist_folder.rglob("*"):
-                relative_path = f.relative_to(dist_folder)
-                zip_path = Path(app_base) / relative_path
-                zf.write(f, zip_path)
+                if f.is_dir():
+                    continue
+                relative_path = f.relative_to(self.dist_dir)
+                zf.write(f, relative_path)
 
         print(f"Payload packed: {self.payload_zip}")
         return self
@@ -165,7 +174,7 @@ class Q2SFXBuilder:
         print(f"Go files prepared in {self.go_sfx_dir}")
         return self
 
-    def build_sfx(self, output_name: str = None) -> str:
+    def build_sfx(self, output_name: str = "") -> str:
         """
         Build the final SFX executable using Go.
 
