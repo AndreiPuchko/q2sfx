@@ -5,6 +5,7 @@ import zipfile
 import tempfile
 import sys
 from pathlib import Path
+from datetime import datetime
 
 
 class Q2SFXBuilder:
@@ -21,6 +22,7 @@ class Q2SFXBuilder:
         dist_dir: str = "dist",
         dist_zip_dir: str = "dist.zip",
         output_dir: str = "dist.sfx",
+        build_time: str = "",
     ):
         self.app_name = ""
         self.python_app = Path(python_app).resolve() if python_app else ""
@@ -33,6 +35,7 @@ class Q2SFXBuilder:
         self.dist_dir = Path(dist_dir)
         self.dist_zip_dir = Path(dist_zip_dir)
         self.output_dir = Path(output_dir)
+        self.build_time = build_time
         self.assets_dir = Path(__file__).parent / "assets"
         self.dist_is_ready = False
 
@@ -56,6 +59,8 @@ class Q2SFXBuilder:
     def set_payload(self, payload_zip: str):
         """Use an existing payload zip instead of packing it."""
         self.payload_zip = Path(payload_zip).resolve()
+        if not self.app_name:
+            self.app_name = self.payload_zip.stem
         if not self.payload_zip.exists():
             raise RuntimeError("payload_zip not found")
         return self
@@ -188,11 +193,7 @@ class Q2SFXBuilder:
             self.prepare_go_files()
 
         if not output_name:
-            output_name = (
-                self.python_app.stem
-                if isinstance(self.python_app, Path)
-                else str(self.python_app)
-            )
+            output_name = f"{self.app_name}_sfx"
             if sys.platform.startswith("win"):
                 output_name += ".exe"
 
@@ -212,6 +213,9 @@ class Q2SFXBuilder:
             check=True,
             cwd=self.go_sfx_dir,
         )
+        if not self.build_time:
+            self.build_time = f"{datetime.now()}"
+        open(final_output.with_suffix(".ver"), "w").write(self.build_time)
 
         print(f"SFX built: {final_output}")
         self.cleanup()
@@ -233,13 +237,17 @@ class Q2SFXBuilder:
         output_dir: str = "dist.sfx",
         console: bool = True,
         output_name: str = "",
+        build_time: str = "",
     ) -> str:
         """
         Convenience factory: build SFX in one line from any stage.
         Will automatically run PyInstaller / pack / prepare as needed.
         """
         builder = Q2SFXBuilder(
-            python_app=python_app, console=console, output_dir=output_dir
+            python_app=python_app,
+            console=console,
+            output_dir=output_dir,
+            build_time=build_time,
         )
         if dist_path:
             builder.set_dist(dist_path)
