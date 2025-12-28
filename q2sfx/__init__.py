@@ -1,6 +1,4 @@
-from importlib.metadata import version, PackageNotFoundError
-from version import __version__
-
+from .version import __version__
 from .builder import Q2SFXBuilder
 
 __all__ = [
