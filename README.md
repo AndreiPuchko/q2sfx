@@ -53,7 +53,7 @@ pip install q2sfx
 ### For Developers
 
 ```bash
-git clone <repository_url>
+git clone https://github.com/AndreiPuchko/q2sfx
 cd q2sfx
 poetry install
 poetry add --group dev pytest pytest-cov

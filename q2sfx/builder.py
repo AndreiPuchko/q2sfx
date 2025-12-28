@@ -234,6 +234,9 @@ class Q2SFXBuilder:
         python_app: str = "",
         dist_path: str = "",
         payload_zip: str = "",
+        build_dir: str = "build",
+        dist_dir: str = "dist",
+        dist_zip_dir: str = "dist.zip",
         output_dir: str = "dist.sfx",
         console: bool = True,
         output_name: str = "",
@@ -246,6 +249,9 @@ class Q2SFXBuilder:
         builder = Q2SFXBuilder(
             python_app=python_app,
             console=console,
+            build_dir=build_dir,
+            dist_dir=dist_dir,
+            dist_zip_dir=dist_zip_dir,
             output_dir=output_dir,
             build_time=build_time,
         )
