@@ -53,21 +53,32 @@ func exists(path string) bool {
 }
 
 func shouldOverwrite(zipPath string) bool {
-	// zip paths всегда используют '/'
+	if zipPath == "" {
+		return false
+	}
+
+	// Normalize all separators to '/'
+	zipPath = strings.ReplaceAll(zipPath, "\\", "/")
+
+	// Remove leading "./"
+	zipPath = strings.TrimPrefix(zipPath, "./")
+
+	// Split into components
 	parts := strings.Split(zipPath, "/")
 
-	// ожидаем: appBase/...
+	// Expect: appBase/...
 	if len(parts) < 2 {
 		return false
 	}
 
-	top := parts[1] // assets, _internal, appBase.exe
+	top := parts[1] // assets, _internal, appBase(.exe)
 
 	for _, p := range overwritePaths {
-		if top == p {
+		if top == p || strings.HasPrefix(top, p+".") {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -209,7 +220,7 @@ func extractPayload(target string) (string, error) {
 		return "", fmt.Errorf("no zip payload found in payload/")
 	}
 
-	// base name проекта = имя архива без .zip
+	// base project name = zip name w/o .zip
 	appBase := strings.TrimSuffix(zipName, ".zip")
 
 	overwritePaths = []string{"_internal", "assets", appBase}
@@ -217,6 +228,7 @@ func extractPayload(target string) (string, error) {
 	if opts.Path == "" {
 		opts.Path = appBase
 	}
+	fmt.Println("Target directory    :", opts.Path)
 
 	zipPath := "payload/" + zipName
 
@@ -250,13 +262,35 @@ func extractPayload(target string) (string, error) {
 
 	atomic.StoreInt64(&progressTotal, totalSize)
 	startProgressRenderer()
+	var rollbackFiles []string
+	var rollbackDirs []string
+	var firstInstall []string
 
 	var copied int64
 	for _, f := range z.File {
 		dest := filepath.Join(opts.Path, stripFirstSegment(f.Name))
-
+		top := getTopSegment(f.Name) // e.g., "_internal" / "assets" / "test_app.exe"
+		if shouldOverwrite(f.Name) {
+			topPath := filepath.Join(opts.Path, top)
+			info, err := os.Stat(topPath)
+			if err == nil && !contains(firstInstall, top) {
+				var isDir = info.IsDir()
+				if contains(overwritePaths, top) && !contains(rollbackDirs, top) {
+					os.Rename(topPath, topPath+".bak")
+				}
+				if isDir {
+					if !contains(rollbackDirs, top) {
+						rollbackDirs = append(rollbackDirs, top)
+					}
+				} else {
+					rollbackFiles = append(rollbackFiles, top)
+				}
+			} else {
+				firstInstall = append(firstInstall, top)
+			}
+		}
 		if f.FileInfo().IsDir() {
-			if !exists(dest) || shouldOverwrite(f.Name) {
+			if !exists(dest) || contains(overwritePaths, top) {
 				if err := os.MkdirAll(dest, 0755); err != nil {
 					return "", err
 				}
@@ -309,9 +343,98 @@ func extractPayload(target string) (string, error) {
 		in.Close()
 		time.Sleep(5 * time.Millisecond)
 	}
+
+	if len(rollbackFiles)+len(rollbackDirs) > 0 {
+		if runtime.GOOS == "windows" {
+			writeFile(filepath.Join(opts.Path, "_rollback.bat"),
+				rollbackBat(rollbackFiles, rollbackDirs), 0644)
+		} else {
+			writeFile(filepath.Join(opts.Path, "_rollback.sh"),
+				rollbackSh(rollbackFiles, rollbackDirs), 0755)
+		}
+	}
+
 	atomic.StoreInt32(&progressDone, 1)
 	fmt.Println()
 	return appBase, nil
+}
+
+func writeFile(path, content string, mode os.FileMode) error {
+	return os.WriteFile(path, []byte(content), mode)
+}
+
+func isExecutable(fi os.FileInfo) bool {
+	if runtime.GOOS == "windows" {
+		return strings.HasSuffix(strings.ToLower(fi.Name()), ".exe")
+	}
+	return fi.Mode()&0111 != 0
+}
+
+func rollbackBat(files, dirs []string) string {
+	var b strings.Builder
+
+	b.WriteString("@echo off\nsetlocal\n\nping localhost -n 2 >nul\n\n")
+
+	for _, d := range dirs {
+		b.WriteString(fmt.Sprintf(
+			`if exist "%[1]s.bak" (
+	rmdir /s /q "%[1]s" 2>nul
+	rename "%[1]s.bak" "%[1]s"
+)
+`, d))
+	}
+
+	for _, f := range files {
+		b.WriteString(fmt.Sprintf(
+			`if exist "%[1]s.bak" (
+	del "%[1]s" 2>nul
+	rename "%[1]s.bak" "%[1]s"
+)
+`, f))
+	}
+
+	b.WriteString("\nstart \"\" \"" + files[0] + "\"\n")
+	return b.String()
+}
+
+func rollbackSh(files, dirs []string) string {
+	var b strings.Builder
+
+	b.WriteString("#!/bin/sh\ncd \"$(dirname \"$0\")\" || exit 1\nsleep 2\n\n")
+
+	for _, d := range dirs {
+		b.WriteString(fmt.Sprintf(
+			`[ -d "%[1]s.bak" ] && rm -rf "%[1]s" && mv "%[1]s.bak" "%[1]s"
+`, d))
+	}
+
+	for _, f := range files {
+		b.WriteString(fmt.Sprintf(
+			`[ -f "%[1]s.bak" ] && rm -f "%[1]s" && mv "%[1]s.bak" "%[1]s" && chmod +x "%[1]s"
+`, f))
+	}
+
+	b.WriteString("\nexec \"./" + files[0] + "\"\n")
+	return b.String()
+}
+
+func getTopSegment(path string) string {
+	path = strings.ReplaceAll(path, "\\", "/")
+	path = strings.TrimPrefix(path, "./")
+	parts := strings.Split(path, "/")
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[1] // first segment inside archive: "_internal", "assets", "test_app.exe"
+}
+
+func contains(slice []string, s string) bool {
+	for _, v := range slice {
+		if v == s || strings.HasPrefix(s, v+".") { // handle exe
+			return true
+		}
+	}
+	return false
 }
 
 // ====================== SHORTCUT ======================
@@ -383,7 +506,6 @@ func main() {
 
 	exe := filepath.Join(appDir, exeName)
 	exe, _ = filepath.Abs(exe)
-	fmt.Println("Target directory    :", appDir)
 	fmt.Println("Installed executable:", exe)
 
 	createShortcut(exe, opts.ShortcutName)
