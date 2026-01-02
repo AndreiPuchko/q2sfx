@@ -151,10 +151,13 @@ class Q2SFXBuilder:
         with zipfile.ZipFile(
             self.payload_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
         ) as zf:
-            for f in dist_folder.rglob("*"):
+            files2zip = [x for x in dist_folder.rglob("*")]
+            len_files2zip = len(files2zip)
+            for index, f in enumerate(files2zip):
                 if f.is_dir():
                     continue
                 relative_path = f.relative_to(self.dist_dir)
+                print(f"{index + 1} from {len_files2zip}:{f}")
                 zf.write(f, relative_path)
 
         print(f"Payload packed: {self.payload_zip}")
