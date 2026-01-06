@@ -8,7 +8,8 @@ from q2sfx import Q2SFXBuilder
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Build a self-extracting executable (SFX) from a Python application using PyInstaller + Go."
+        description="Build a self-extracting executable (SFX) "
+        "from a Python application using PyInstaller + Go."
     )
 
     parser.add_argument(
@@ -25,7 +26,7 @@ def main():
     parser.add_argument(
         "-o",
         "--output",
-        help="Output SFX file path (default: <app_name>_setup.exe in dist.sfx)",
+        help="Output SFX file path (default: <app_name>_sfx.exe in dist.sfx)",
         default=None,
     )
 
@@ -53,10 +54,28 @@ def main():
         default=None,
     )
 
+    parser.add_argument(
+        "--build-time",
+        help="Build timestamp for .ver file (default: current datetime)",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--no-ver-file",
+        action="store_false",
+        dest="make_ver_file",
+        help="Do not include a .ver file in dist.zip",
+    )
+
     args = parser.parse_args()
 
     try:
-        builder = Q2SFXBuilder(args.app, console=args.console)
+        builder = Q2SFXBuilder(
+            args.app,
+            console=args.console,
+            build_time=args.build_time,
+            make_ver_file=args.make_ver_file
+        )
 
         if args.dist:
             builder.set_dist(args.dist)
