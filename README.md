@@ -14,8 +14,12 @@ It embeds your Python application (as a ZIP archive) into a Go-based SFX install
 
 ## The generated SFX executable provides:
 
-- **Installer**: on the first run extracts all payload data (PyA) into the given folder(optional), creates the shortcut (optional).
-- **Updater**: When updating, the tool only overwrites core components (`.exe`, `_internal/`, and `assets/`). Custom user folders, logs, or local databases remain untouched.
+- **Installer**: on the first run extracts all payload data (PyApp) into the given folder(optional), creates the shortcut (optional) and runs PyApp.
+- **Updater**: When updating, the tool only overwrites core components (`.exe`, `.ver`, `_internal/`, and `assets/`) and runs PyApp. Custom user folders, logs, or local databases remain untouched.
+  Before overwriting, existing core files and directories are automatically
+  backed up as `.bak`. A platform-specific rollback script
+  (`_rollback.bat` on Windows or `_rollback.sh` on Linux/macOS) is generated,
+  allowing the previous version to be fully restored if needed.
 - **CLI Flexibility**: SFX Supports flags to force console mode, change the installation path or shortcut name.
 - Progress bar with animated spinner.
 - Cross-platform: Windows, Linux, macOS.
@@ -63,22 +67,58 @@ poetry add --group dev pytest pytest-cov
 
 ## Usage
 
+### CLI usage
+
+```
+q2sfx --help
+usage: q2sfx [-h] [--version] [-o OUTPUT] [--console] [--no-pyinstaller] [--dist DIST] [--payload PAYLOAD] [--build-time BUILD_TIME] [--no-ver-file] app
+
+Build a self-extracting executable (SFX) from a Python application using PyInstaller + Go.
+
+positional arguments:
+  app                   Path to the Python entry script (e.g. app.py)
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+  -o OUTPUT, --output OUTPUT
+                        Output SFX file path (default: <app_name>_sfx.exe in dist.sfx)
+  --console             Build payload application with console (default: GUI)
+  --no-pyinstaller      Assume PyInstaller build already exists (skip PyInstaller step)
+  --dist DIST           Use existing PyInstaller dist directory instead of running PyInstaller
+  --payload PAYLOAD     Use existing payload zip instead of creating one
+  --build-time BUILD_TIME
+                        Build timestamp for .ver file (default: current datetime)
+  --no-ver-file         Do not include a .ver file in dist.zip
+```
+
 ### Basic usage
 
-from q2sfx.builder import Q2SFXBuilder
+**Build a console application from Python code**  
+This runs PyInstaller with default options and wraps the result into an SFX.
 
-builder = Q2SFXBuilder("path/to/your_app.py", console=True)  
-builder.build_sfx("dist.sfx/my_app_setup.exe")
+```python
+from q2sfx import Q2SFXBuilder
 
-This will automatically:
+final_exe = Q2SFXBuilder.build_sfx_from("tests/test_app.py", console=True)
+print("Built SFX:", final_exe)
+```
 
-1. Run PyInstaller (if needed).
-2. Pack the `dist/your_app` folder into a ZIP payload.
-3. Prepare Go files and embed the payload.
-4. Build the final SFX executable in `dist.sfx/`.
-5. Clean up temporary files.
+**Build an SFX from an existing PyInstaller dist/ directory**
+Useful when PyInstaller requires custom options or hooks.
 
----
+```python
+final_exe = Q2SFXBuilder.build_sfx_from(dist_path="dist/test_app", output_name="t2.exe")
+print("Built SFX:", final_exe)
+```
+
+**Build an SFX from a ZIP payload**
+Useful when your distribution contains extra assets or was prepared externally.
+
+```python
+final_exe = Q2SFXBuilder.build_sfx_from(payload_zip="dist.zip/test_app.zip", output_name="t3.exe")
+print("Built SFX:", final_exe)
+```
 
 ### Advanced usage
 
@@ -100,52 +140,53 @@ builder.build_sfx("dist.sfx/my_app_setup.exe")
 
 ---
 
-## SFX usage
+## ZIP file notes
 
-### CLI Help
-
-```
-q2_sfx.exe --help
-
-Usage: q2_sfx.exe [options] [path]
-
-Options:
-  -no-shortcut
-  Do not create a desktop shortcut.
-  -shortcut-name string
-  Name of the shortcut (default: application name).
-  [path] (optional)
-  Installation directory (default: application name).
-```
-
----
-
-## Building SFX from Python script manually
-
-# Activate your virtual environment
-
-.\.venv\Scripts\activate.ps1
-
-# Run PyInstaller
-
-pyinstaller path\to\your_app.py
-
-# Compress the dist folder
-
-Compress-Archive -Path dist\your_app -DestinationPath dist\your_app.zip
-
-# Prepare Go files and build SFX
-
-python -m q2sfx path\to\your_app.py
-
----
-
-## Notes
 - The Python application name must match the ZIP archive name.
 - By default, SFX will be generated in the `dist.sfx/` folder.
+
+---
+
+# Simple Auto-update example
+
+![Source Code](https://img.shields.io/badge/source-github-blue)(https://github.com/AndreiPuchko/q2sfx/blob/main/tests/test_app.py)
+
+Each SFX build produced by **q2sfx** can include a `.ver` file containing
+the build timestamp (for example: `2025-12-31 18:42:10`).
+
+The application can compare its local `.ver` file with a remote one
+and automatically download and run a newer SFX build.
+
+#### Expected files on the update server
+
+`test_app_sfx.exe`
+`test_app_sfx.ver`
+
+#### How it works
+
+1. On startup, the application checks whether it is running as a frozen executable.
+2. It reads its local `<app>.ver` file.
+3. It downloads and compares the remote `.ver` file.
+4. If a newer build is available:
+   - the new SFX is downloaded
+   - launched in detached mode
+   - the current application exits
+5. The new SFX handles safe replacement and rollback internally
+   (`.bak` files + `_rollback.bat` / `_rollback.sh`) and starts updated app
+
+#### Example update logic
+
+```python
+if new_build_time > current_build_time:
+    # download new SFX
+    # run installer
+    # exit current app
+
+
 
 ---
 
 ## License
 
 MIT License
+```
