@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "q2sfx"
-version = "0.1.5"
+version = "0.1.6"
 description = "Python-to-exe SFX builder using PyInstaller"
 authors = ["Andrei Puchko <andrei.puchko@gmx.de>"]
 readme = "README.md"
