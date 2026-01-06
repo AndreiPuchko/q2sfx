@@ -23,6 +23,7 @@ class Q2SFXBuilder:
         dist_zip_dir: str = "dist.zip",
         output_dir: str = "dist.sfx",
         build_time: str = "",
+        make_ver_file: bool = True,
     ):
         self.app_name = ""
         self.python_app = Path(python_app).resolve() if python_app else ""
@@ -36,6 +37,10 @@ class Q2SFXBuilder:
         self.dist_zip_dir = Path(dist_zip_dir)
         self.output_dir = Path(output_dir)
         self.build_time = build_time
+        self.make_ver_file = make_ver_file
+
+        if not self.build_time:
+            self.build_time = f"{datetime.now()}"
         self.assets_dir = Path(__file__).parent / "assets"
         self.dist_is_ready = False
 
@@ -147,6 +152,8 @@ class Q2SFXBuilder:
 
         self.dist_zip_dir.mkdir(parents=True, exist_ok=True)
         self.payload_zip = self.dist_zip_dir / f"{self.app_name}.zip"
+        if self.make_ver_file:
+            open(dist_folder / f"{self.app_name}.ver", "w").write(self.build_time)
 
         with zipfile.ZipFile(
             self.payload_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9
@@ -197,8 +204,8 @@ class Q2SFXBuilder:
 
         if not output_name:
             output_name = f"{self.app_name}_sfx"
-            if sys.platform.startswith("win"):
-                output_name += ".exe"
+        if sys.platform.startswith("win") and not output_name.endswith(".exe"):
+            output_name += ".exe"
 
         final_output = (Path.cwd() / self.output_dir / output_name).resolve()
         final_output.parent.mkdir(parents=True, exist_ok=True)
@@ -216,8 +223,6 @@ class Q2SFXBuilder:
             check=True,
             cwd=self.go_sfx_dir,
         )
-        if not self.build_time:
-            self.build_time = f"{datetime.now()}"
         open(final_output.with_suffix(".ver"), "w").write(self.build_time)
 
         print(f"SFX built: {final_output}")
@@ -244,6 +249,7 @@ class Q2SFXBuilder:
         console: bool = True,
         output_name: str = "",
         build_time: str = "",
+        make_ver_file: bool = True,
     ) -> str:
         """
         Convenience factory: build SFX in one line from any stage.
@@ -257,6 +263,7 @@ class Q2SFXBuilder:
             dist_zip_dir=dist_zip_dir,
             output_dir=output_dir,
             build_time=build_time,
+            make_ver_file=make_ver_file,
         )
         if dist_path:
             builder.set_dist(dist_path)
