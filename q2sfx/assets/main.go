@@ -228,7 +228,9 @@ func extractPayload(target string) (string, error) {
 	if opts.Path == "" {
 		opts.Path = appBase
 	}
-	fmt.Println("Target directory    :", opts.Path)
+	fmt.Println("Installing SFX:", appBase, "...")
+	absPath, _ := filepath.Abs(opts.Path)
+	fmt.Println("Target directory    :", absPath)	
 
 	zipPath := "payload/" + zipName
 
