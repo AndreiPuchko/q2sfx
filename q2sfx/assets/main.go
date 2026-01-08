@@ -13,7 +13,8 @@ import (
 	"runtime"
 	"strings"
 	"sync/atomic"
-	"syscall"
+
+	// "syscall"
 	"time"
 )
 
@@ -230,7 +231,7 @@ func extractPayload(target string) (string, error) {
 	}
 	fmt.Println("Installing SFX:", appBase, "...")
 	absPath, _ := filepath.Abs(opts.Path)
-	fmt.Println("Target directory    :", absPath)	
+	fmt.Println("Target directory    :", absPath)
 
 	zipPath := "payload/" + zipName
 
@@ -358,6 +359,14 @@ func extractPayload(target string) (string, error) {
 
 	atomic.StoreInt32(&progressDone, 1)
 	fmt.Println()
+
+	// On Linux/macOS, set exec permission for the main executable
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		exePath := filepath.Join(opts.Path, appBase)
+		if err := os.Chmod(exePath, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to set exec permission on %s: %v\n", exePath, err)
+		}
+	}
 	return appBase, nil
 }
 
@@ -524,9 +533,9 @@ func main() {
 		cmd.Stdin = nil
 	}
 
-	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: false}
-	}
+	// if runtime.GOOS == "windows" {
+	// 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: false}
+	// }
 
 	err = cmd.Start()
 	if err != nil {
