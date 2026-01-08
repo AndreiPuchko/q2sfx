@@ -181,12 +181,29 @@ if new_build_time > current_build_time:
     # download new SFX
     # run installer
     # exit current app
+```
 
-
+---
+# Simple GUI demo workflow (for Windows)
+```bash
+# create virtual enviroment (python 3.9 used)
+py -3.9 -m venv .venv
+# activate virtual enviroment
+.\.venv\Scripts\activate
+# install deps for demo project
+pip install q2db q2gui
+pip install git+https://github.com/AndreiPuchko/q2sfx.git
+# clone demo project
+git clone https://github.com/AndreiPuchko/q2-short.git
+# build SFX
+q2sfx .\q2-short\app.py
+# run the result
+cd dist.sfx
+./app_sfx.exe
+```
 
 ---
 
 ## License
 
 MIT License
-```
