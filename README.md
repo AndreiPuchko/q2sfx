@@ -1,6 +1,9 @@
 # q2sfx
 
+[**https://github.com/AndreiPuchko/q2sfx**](https://github.com/AndreiPuchko/q2sfx)
+
 **q2sfx** is a Python package and CLI tool to create self-extracting executables (SFX) from Python applications built with PyInstaller.
+
 
 It embeds your Python application (as a ZIP archive) into a Go-based SFX installer, supports console or GUI modes, and can optionally create a desktop shortcut.
 
