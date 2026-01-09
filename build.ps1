@@ -59,7 +59,7 @@ if (Test-Path dist) {
 
 # --- 2. Build & Publish to PyPI ---
 poetry build
-# poetry publish
+poetry publish
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "❌ Build failed"
