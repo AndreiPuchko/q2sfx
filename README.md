@@ -152,7 +152,7 @@ builder.build_sfx("dist.sfx/my_app_setup.exe")
 
 # Simple Auto-update example
 
-![Source Code](https://img.shields.io/badge/source-github-blue)(https://github.com/AndreiPuchko/q2sfx/blob/main/tests/test_app.py)
+[![Source Code](https://img.shields.io/badge/source-github-blue)](https://github.com/AndreiPuchko/q2sfx/blob/main/tests/test_app.py)
 
 Each SFX build produced by **q2sfx** can include a `.ver` file containing
 the build timestamp (for example: `2025-12-31 18:42:10`).
